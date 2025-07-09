@@ -1,40 +1,36 @@
 import heapq
-import math
-import time
-import os
 from typing import List, Tuple, Dict, Set
 from itertools import permutations
-
-# =============================================
-# Definições de Tipos e Constantes (ATUALIZADO)
-# =============================================
+import matplotlib.pyplot as plt
+import numpy as np
 
 Position = Tuple[int, int]
 Path = List[Position]
 TerrainMap = List[List[int]]
 
 # Tamanho do mapa
-MAP_SIZE = (10, 10)
+MAP_SIZE = (42, 42)
 
-# Tipos de terreno no mapa principal
-GRAMA = 0
-AREIA = 1
-FLORESTA = 2
-MONTANHA = 3
-AGUA = 4
+# Tipos de terreno nos mapas
+GRASS = 0
+SAND = 1
+FOREST = 2
+MOUNTAIN = 3
+WATER = 4
 WALL = 5
 
+# Pontos diferentes nos mapas
 DANGEON = 7
 PENDANT = 8
 LINK = 9
 
 # Custo de movimento para cada terreno
 COST_MAP = {
-    GRAMA: 10,
-    AREIA: 20,
-    FLORESTA: 100,
-    MONTANHA: 150,
-    AGUA: 180,
+    GRASS: 10,
+    SAND: 20,
+    FOREST: 100,
+    MOUNTAIN: 150,
+    WATER: 180,
     WALL: float('inf'),
 
     DANGEON: 0,
@@ -42,13 +38,8 @@ COST_MAP = {
     LINK: 0,
 }
 
-# =============================================
-# Implementação do Algoritmo A* (CORRIGIDO)
-# =============================================
-
+# Funcao heuristica (distância de Manhattan)
 def heuristic(a: Position, b: Position) -> float:
-    """Função heurística (distância de Manhattan)"""
-    """a posição atual e b é o objetivo"""
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 def a_star_search(
@@ -58,7 +49,6 @@ def a_star_search(
     cost_map: Dict[int, int],
     dungeon: bool = False
 ) -> Tuple[Path, int]:
-    """Implementação corrigida do algoritmo A*"""
     
     # Função para obter custo de movimento
     def get_move_cost(pos: Position) -> int:
@@ -111,28 +101,96 @@ def a_star_search(
 
     return path, cost_so_far
 
-def visualize_step_by_step(path: Path, cost, map_size: Tuple[int, int]):
-    grid = [['.' for _ in range(map_size[1])] for _ in range(map_size[0])]
+# def visualize_step_by_step(path: Path, cost, map_size: Tuple[int, int]):
+#     grid = [['.' for _ in range(map_size[1])] for _ in range(map_size[0])]
+    
+#     # Marcar pontos importantes
+#     x, y = path[0]
+#     grid[x][y] = 'S'
+#     x, y = path[-1]
+#     grid[x][y] = 'X'
+
+#     # Marcar caminho
+#     print("\nVisualizacao do caminho:")
+#     for pos in path:
+#         os.system('cls')
+#         x, y = pos
+#         if grid[x][y] == '.':
+#             grid[x][y] = "#"
+#         for row in grid:
+#             print(' '.join(row))
+#         print("Custo atual:", cost.get(pos, float('inf')))
+#         time.sleep(0.05)
+
+def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None):
+
+    color_map = {
+        GRASS: [0.55, 0.8, 0.3],
+        SAND: [0.77, 0.75, 0.6],
+        FOREST: [0.1, 0.55, 0.1],
+        MOUNTAIN: [0.4, 0.35, 0.15],
+        WATER: [0.33, 0.55, 0.83],
+        DANGEON: [0.12, 0.12, 0.12], 
+        LINK: [0.85, 0.5, 0.3]
+    }
+    
+    rows, cols = map_size
+    grid = np.zeros((rows, cols, 3))
+
+    for r in range(rows):
+        for c in range(cols):
+            terrain_type = map_data[r][c]
+            grid[r, c] = color_map.get(terrain_type, [0.5, 0.5, 0.5])
     
     # Marcar pontos importantes
     x, y = path[0]
-    grid[x][y] = 'S'
+    grid[x][y] = color_map.get(LINK)
     x, y = path[-1]
-    grid[x][y] = 'X'
+    grid[x][y] = color_map.get(DANGEON)
 
-    # Marcar caminho
-    print("\nVisualizacao do caminho:")
-    for pos in path:
-        os.system('cls')
-        x, y = pos
-        if grid[x][y] == '.':
-            grid[x][y] = "#"
-        for row in grid:
-            print(' '.join(row))
-        print("Custo atual:", cost.get(pos, float('inf')))
-        time.sleep(0.1)
-        
-    
+    plt.ion()
+
+    # --------- CONFIGURACOES DO PLOT --------
+    fig, ax = plt.subplots(figsize=MAP_SIZE)
+    mng = plt.get_current_fig_manager()
+    if mng is not None:
+        mng.full_screen_toggle() 
+    fig.subplots_adjust(top=1, bottom=0, left=0, right=1, wspace=0, hspace=0)
+    im = ax.imshow(grid)
+    # ----------------------------------------
+    # --------- LINHAS PARA AS BORDAS --------
+    ax.set_xticks(np.arange(-.5, cols, 1))
+    ax.set_yticks(np.arange(-.5, rows, 1))
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    ax.tick_params(axis='both', which='both', length=0)
+    ax.grid(which='major', color='black', linestyle='-', linewidth=1)
+    # ----------------------------------------
+
+    plt.draw()
+    plt.pause(2)
+
+    if path:
+        grid[path[0]] = [1, 1, 1]
+        for r, c in path: # Move o link
+
+            current_grid = np.copy(grid)
+            current_grid[r, c] = color_map.get(LINK)
+
+            im.set_data(current_grid)
+            fig.canvas.draw_idle()
+            plt.pause(0.2)
+
+        for r, c in path: # Pinta o caminho percorrido
+            grid[r, c] = color_map.get(LINK)
+
+        im.set_data(grid)
+        fig.canvas.draw_idle()
+        plt.pause(5)
+
+    plt.close(fig)
+    plt.ioff()
+
 def loading_map(filename):
     map_data = []
     link_position = Position
@@ -154,11 +212,11 @@ def loading_map(filename):
                             link_position = (row_index, col_index)
                         elif element_int == 8: # Pingente
                             pendants_position = (row_index, col_index)
-                        elif element_int == 7: # Pingente
+                        elif element_int == 7: # Masmorra
                             dungeon_position = (row_index, col_index)
 
                     except ValueError:
-                        print(f"Aviso: Não foi possível converter '{element_str}' para inteiro na linha {row_index}, coluna {col_index}")
+                        print(f"Não foi possível converter '{element_str}' para inteiro na linha {row_index}, coluna {col_index}")
                         process_lines.append(11)
 
                 map_data.append(process_lines)
@@ -170,12 +228,11 @@ def loading_map(filename):
         return None
 
 def main():
-    print("Iniciando busca pelos Pingentes da Virtude...\n")
     # =====================TESTES=================
-    hyrule_map, link_start, dungeon_position, _ = loading_map("mapMinimal.txt")
+    hyrule_map, link_start, dungeon_position, _ = loading_map("mainMap.txt")
     test_path, test_cost = a_star_search(link_start, dungeon_position, hyrule_map, COST_MAP)
-    visualize_step_by_step(test_path, test_cost, MAP_SIZE)
     print(f"Caminho teste encontrado! Custo total: {test_cost.get(dungeon_position, float('inf'))}")
+    plot_map(hyrule_map, MAP_SIZE, test_path)
     # ============================================
 
 if __name__ == "__main__":
