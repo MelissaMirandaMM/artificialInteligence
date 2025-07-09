@@ -48,7 +48,7 @@ def a_star_search(
     terrain_map: TerrainMap,
     cost_map: Dict[int, int],
     dungeon: bool = False
-) -> Tuple[Path, int]:
+) -> Tuple[Path, dict[Position, int]]:
     
     # Função para obter custo de movimento
     def get_move_cost(pos: Position) -> int:
@@ -122,7 +122,7 @@ def a_star_search(
 #         print("Custo atual:", cost.get(pos, float('inf')))
 #         time.sleep(0.05)
 
-def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None):
+def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None, cost: dict[Position, int] = {}):
 
     color_map = {
         GRASS: [0.55, 0.8, 0.3],
@@ -166,30 +166,40 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None)
     ax.tick_params(axis='both', which='both', length=0)
     ax.grid(which='major', color='black', linestyle='-', linewidth=1)
     # ----------------------------------------
+    # --------------- Custo ------------------
+    # 'transform=ax.transAxes' significa que as coordenadas são relativas ao próprio eixo (0 a 1)
+    # 'ha' e 'va' para alinhamento horizontal e vertical
+    cost_text = ax.text(-0.015, 0.98, 'Custo: 0', ha='right', va='top', color='white', fontsize=16, weight='bold', 
+        bbox=dict(facecolor='black', alpha=0.7, edgecolor='none'), # Fundo preto semi-transparente
+        transform=ax.transAxes) # Crucial para posicionamento relativo
+    # ----------------------------------------
 
     plt.draw()
-    plt.pause(2)
+    plt.waitforbuttonpress() 
 
     if path:
         grid[path[0]] = [1, 1, 1]
         for r, c in path: # Move o link
+
+            cost_text.set_text(f'Custo: {cost.get((r, c))}')
 
             current_grid = np.copy(grid)
             current_grid[r, c] = color_map.get(LINK)
 
             im.set_data(current_grid)
             fig.canvas.draw_idle()
-            plt.pause(0.2)
+            plt.pause(0.1)
 
         for r, c in path: # Pinta o caminho percorrido
             grid[r, c] = color_map.get(LINK)
 
         im.set_data(grid)
         fig.canvas.draw_idle()
-        plt.pause(5)
-
-    plt.close(fig)
+        plt.waitforbuttonpress()
+        
     plt.ioff()
+    plt.close(fig)
+
 
 def loading_map(filename):
     map_data = []
@@ -232,7 +242,7 @@ def main():
     hyrule_map, link_start, dungeon_position, _ = loading_map("mainMap.txt")
     test_path, test_cost = a_star_search(link_start, dungeon_position, hyrule_map, COST_MAP)
     print(f"Caminho teste encontrado! Custo total: {test_cost.get(dungeon_position, float('inf'))}")
-    plot_map(hyrule_map, MAP_SIZE, test_path)
+    plot_map(hyrule_map, MAP_SIZE, test_path, test_cost)
     # ============================================
 
 if __name__ == "__main__":
