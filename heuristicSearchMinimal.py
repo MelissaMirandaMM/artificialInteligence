@@ -9,7 +9,8 @@ Path = List[Position]
 TerrainMap = List[List[int]]
 
 # Tamanho do mapa
-MAP_SIZE = (42, 42)
+MAIN_MAP_SIZE = (42, 42)
+DUNGEON_MAP_SIZE = (28, 28)
 
 # Tipos de terreno nos mapas
 GRASS = 0
@@ -17,7 +18,8 @@ SAND = 1
 FOREST = 2
 MOUNTAIN = 3
 WATER = 4
-WALL = 5
+WAY = 5
+WALL = 6
 
 # Pontos diferentes nos mapas
 DANGEON = 7
@@ -31,6 +33,8 @@ COST_MAP = {
     FOREST: 100,
     MOUNTAIN: 150,
     WATER: 180,
+
+    WAY: 10,
     WALL: float('inf'),
 
     DANGEON: 0,
@@ -46,8 +50,7 @@ def a_star_search(
     start: Position,
     goal: Position,
     terrain_map: TerrainMap,
-    cost_map: Dict[int, int],
-    dungeon: bool = False
+    cost_map: Dict[int, int]
 ) -> Tuple[Path, dict[Position, int]]:
     
     # Função para obter custo de movimento
@@ -131,7 +134,11 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
         MOUNTAIN: [0.4, 0.35, 0.15],
         WATER: [0.33, 0.55, 0.83],
         DANGEON: [0.12, 0.12, 0.12], 
-        LINK: [0.85, 0.5, 0.3]
+        LINK: [0.85, 0.5, 0.3],
+
+        WAY: [1.0, 0.9, 0.9],
+        WALL: [0.7, 0.7, 0.7],
+        PENDANT: [1, 1, 0]
     }
     
     rows, cols = map_size
@@ -141,17 +148,11 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
         for c in range(cols):
             terrain_type = map_data[r][c]
             grid[r, c] = color_map.get(terrain_type, [0.5, 0.5, 0.5])
-    
-    # Marcar pontos importantes
-    x, y = path[0]
-    grid[x][y] = color_map.get(LINK)
-    x, y = path[-1]
-    grid[x][y] = color_map.get(DANGEON)
 
     plt.ion()
 
     # --------- CONFIGURACOES DO PLOT --------
-    fig, ax = plt.subplots(figsize=MAP_SIZE)
+    fig, ax = plt.subplots(figsize=(10, 10))
     mng = plt.get_current_fig_manager()
     if mng is not None:
         mng.full_screen_toggle() 
@@ -167,15 +168,13 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
     ax.grid(which='major', color='black', linestyle='-', linewidth=1)
     # ----------------------------------------
     # --------------- Custo ------------------
-    # 'transform=ax.transAxes' significa que as coordenadas são relativas ao próprio eixo (0 a 1)
-    # 'ha' e 'va' para alinhamento horizontal e vertical
     cost_text = ax.text(-0.015, 0.98, 'Custo: 0', ha='right', va='top', color='white', fontsize=16, weight='bold', 
-        bbox=dict(facecolor='black', alpha=0.7, edgecolor='none'), # Fundo preto semi-transparente
-        transform=ax.transAxes) # Crucial para posicionamento relativo
+        bbox=dict(facecolor='black', alpha=0.7, edgecolor='none'),
+        transform=ax.transAxes)
     # ----------------------------------------
 
     plt.draw()
-    plt.waitforbuttonpress() 
+    # plt.waitforbuttonpress() 
 
     if path:
         grid[path[0]] = [1, 1, 1]
@@ -195,17 +194,17 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
 
         im.set_data(grid)
         fig.canvas.draw_idle()
-        plt.waitforbuttonpress()
+        plt.pause(2)
+        # plt.waitforbuttonpress()
         
     plt.ioff()
     plt.close(fig)
-
 
 def loading_map(filename):
     map_data = []
     link_position = Position
     pendants_position = Position
-    dungeon_position = Position
+    dungeon_position = [Position]
 
     try:
         with open(filename, 'r') as f:
@@ -223,7 +222,7 @@ def loading_map(filename):
                         elif element_int == 8: # Pingente
                             pendants_position = (row_index, col_index)
                         elif element_int == 7: # Masmorra
-                            dungeon_position = (row_index, col_index)
+                            dungeon_position.append((row_index, col_index))
 
                     except ValueError:
                         print(f"Não foi possível converter '{element_str}' para inteiro na linha {row_index}, coluna {col_index}")
@@ -239,10 +238,44 @@ def loading_map(filename):
 
 def main():
     # =====================TESTES=================
-    hyrule_map, link_start, dungeon_position, _ = loading_map("mainMap.txt")
-    test_path, test_cost = a_star_search(link_start, dungeon_position, hyrule_map, COST_MAP)
-    print(f"Caminho teste encontrado! Custo total: {test_cost.get(dungeon_position, float('inf'))}")
-    plot_map(hyrule_map, MAP_SIZE, test_path, test_cost)
+    dn = 1
+    main_map_data, link_position, dungeon_position, _ = loading_map("mainMap.txt")
+    test_path, test_cost = a_star_search(link_position, dungeon_position[dn], main_map_data, COST_MAP)
+    plot_map(main_map_data, MAIN_MAP_SIZE, test_path, test_cost)
+
+    if (test_path):
+        print(f"Caminho teste encontrado! Custo total: {test_cost.get(dungeon_position[dn])}")
+        dugeon_map_data, link_position, _, pendants_position = loading_map(f"dungeonMap{dn}.txt")
+        test_path, test_cost = a_star_search(link_position, pendants_position, dugeon_map_data, COST_MAP)
+        plot_map(dugeon_map_data, DUNGEON_MAP_SIZE, test_path, test_cost)
+
+    link_position = dungeon_position[dn]
+    dn = dn + 1
+    test_path, test_cost = a_star_search(link_position, dungeon_position[dn], main_map_data, COST_MAP)
+    plot_map(main_map_data, MAIN_MAP_SIZE, test_path, test_cost)
+
+    if (test_path):
+        print(f"Caminho teste encontrado! Custo total: {test_cost.get(dungeon_position[dn])}")
+        dugeon_map_data, link_position, _, pendants_position = loading_map(f"dungeonMap{dn}.txt")
+        test_path, test_cost = a_star_search(link_position, pendants_position, dugeon_map_data, COST_MAP)
+        plot_map(dugeon_map_data, DUNGEON_MAP_SIZE, test_path, test_cost)
+
+    link_position = dungeon_position[dn]
+    dn = dn + 1
+    test_path, test_cost = a_star_search(link_position, dungeon_position[dn], main_map_data, COST_MAP)
+    plot_map(main_map_data, MAIN_MAP_SIZE, test_path, test_cost)
+
+    if (test_path):
+        print(f"Caminho teste encontrado! Custo total: {test_cost.get(dungeon_position[dn])}")
+        dugeon_map_data, link_position, _, pendants_position = loading_map(f"dungeonMap{dn}.txt")
+        test_path, test_cost = a_star_search(link_position, pendants_position, dugeon_map_data, COST_MAP)
+        plot_map(dugeon_map_data, DUNGEON_MAP_SIZE, test_path, test_cost)
+
+    link_position = dungeon_position[dn]
+    test_path, test_cost = a_star_search(link_position, (7, 5), main_map_data, COST_MAP)
+    plot_map(main_map_data, MAIN_MAP_SIZE, test_path, test_cost)
+
+
     # ============================================
 
 if __name__ == "__main__":
