@@ -106,27 +106,6 @@ def a_star_search(
 
     return path, cost_so_far
 
-# def visualize_step_by_step(path: Path, cost, map_size: Tuple[int, int]):
-#     grid = [['.' for _ in range(map_size[1])] for _ in range(map_size[0])]
-    
-#     # Marcar pontos importantes
-#     x, y = path[0]
-#     grid[x][y] = 'S'
-#     x, y = path[-1]
-#     grid[x][y] = 'X'
-
-#     # Marcar caminho
-#     print("\nVisualizacao do caminho:")
-#     for pos in path:
-#         os.system('cls')
-#         x, y = pos
-#         if grid[x][y] == '.':
-#             grid[x][y] = "#"
-#         for row in grid:
-#             print(' '.join(row))
-#         print("Custo atual:", cost.get(pos, float('inf')))
-#         time.sleep(0.05)
-
 def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None, cost: dict[Position, int] = {}, total_cost: int = 0):
 
     color_map = {
@@ -155,7 +134,6 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
             if(terrain_type == 9):
                 grid[r, c] = [0.5, 0.5, 0.8]
             
-
     plt.ion()
 
     # --------- CONFIGURACOES DO PLOT --------
@@ -198,7 +176,7 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
 
             im.set_data(current_grid)
             fig.canvas.draw_idle()
-            plt.pause(0.01)
+            # plt.pause(0.5)
 
         for r, c in path: # Pinta o caminho percorrido
             grid[r, c] = color_map.get(LINK)
@@ -216,7 +194,7 @@ def loading_map(filename):
     link_position = Position
     pendants_position = Position
     lostWoods_position = Position
-    dungeon_position = [Position]
+    dungeons_position = []
 
     try:
         with open(filename, 'r') as f:
@@ -234,7 +212,7 @@ def loading_map(filename):
                         elif element_int == 8: # Pingente
                             pendants_position = (row_index, col_index)
                         elif element_int == 7: # Masmorra
-                            dungeon_position.append((row_index, col_index))
+                            dungeons_position.append((row_index, col_index))
                         elif element_int == 11: #Lost Wood
                             lostWoods_position = (row_index, col_index)
 
@@ -243,36 +221,34 @@ def loading_map(filename):
                         process_lines.append(22)
 
                 map_data.append(process_lines)
-        dungeon_position.append(lostWoods_position)        
-        return map_data, link_position, dungeon_position, pendants_position
+        
+        dungeons_position.reverse()
+        dungeons_position.append(lostWoods_position)        
+        return map_data, link_position, dungeons_position, pendants_position
 
     except Exception as e:
         print(f"Ocorreu um erro ao ler o arquivo: {e}")
         return None
 
-
-
 def main():
 
-    dn = 1
     total_cost = 0
-    main_map_data, link_position, dungeon_position, _ = loading_map("mainMap.txt")
-    while (dn <= 4):
+    main_map_data, link_position, dungeons_position, _ = loading_map("mainMap.txt")
+    for i, dungeon in enumerate(dungeons_position, start=1):
     
-        test_path, test_cost = a_star_search(link_position, dungeon_position[dn], main_map_data, COST_MAP)
+        test_path, test_cost = a_star_search(link_position, dungeon, main_map_data, COST_MAP)
         plot_map(main_map_data, MAIN_MAP_SIZE, test_path, test_cost, total_cost)
-        total_cost += test_cost.get(dungeon_position[dn])
+        total_cost += test_cost.get(dungeon)
         
-        if (test_path and dn < 4):
-            dugeon_map_data, link_position, _, pendants_position = loading_map(f"dungeonMap{dn}.txt")
+        if (test_path and i < 4):
+            dugeon_map_data, link_position, _, pendants_position = loading_map(f"dungeonMap{i}.txt")
             test_path, test_cost = a_star_search(link_position, pendants_position, dugeon_map_data, COST_MAP)
             plot_map(dugeon_map_data, DUNGEON_MAP_SIZE, test_path, test_cost, total_cost)
             total_cost += test_cost.get(pendants_position)
         else:
             break
 
-        link_position = dungeon_position[dn]
-        dn += 1
+        link_position = dungeon
 
     print(f"Caminho encontrado! Custo total: {total_cost}")
     return
