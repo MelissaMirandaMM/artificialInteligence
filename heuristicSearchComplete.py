@@ -231,24 +231,48 @@ def loading_map(filename):
         return None
 
 def main():
-
     total_cost = 0
     main_map_data, link_position, dungeons_position, _ = loading_map("mainMap.txt")
+
     for i, dungeon in enumerate(dungeons_position, start=1):
-    
+        # Encontra o caminho do Link até a masmorra atual no mapa principal usando A*
         test_path, test_cost = a_star_search(link_position, dungeon, main_map_data, COST_MAP)
-        plot_map(main_map_data, MAIN_MAP_SIZE, test_path, test_cost, total_cost)
-        total_cost += test_cost.get(dungeon)
         
-        if (test_path and i < 4):
-            dugeon_map_data, link_position, _, pendants_position = loading_map(f"dungeonMap{i}.txt")
-            test_path, test_cost = a_star_search(link_position, pendants_position, dugeon_map_data, COST_MAP)
-            plot_map(dugeon_map_data, DUNGEON_MAP_SIZE, test_path, test_cost, total_cost)
-            total_cost += test_cost.get(pendants_position)
+        if test_path:
+            # Plota o mapa principal com o caminho encontrado até a masmorra
+            plot_map(main_map_data, MAIN_MAP_SIZE, test_path, test_cost, total_cost)
+            # Adiciona o custo de alcançar a masmorra ao custo total
+            total_cost += test_cost.get(dungeon)
         else:
+            print(f"Não foi possível encontrar um caminho para a masmorra {i}.")
             break
 
-        link_position = dungeon
+        if i < 4:
+            # Pergunta ao usuário se deseja prosseguir para dentro da masmorra (S/N)
+            proceed = input(f"Caminho para a Masmorra {i} encontrado. Deseja prosseguir para a masmorra? (S/N): ").strip().upper()
+            if proceed == 'S': # Altera a condição para 'S'
+                # Se o usuário confirmar, carrega os dados do mapa da masmorra correspondente
+                dungeon_map_data, link_position_dungeon, _, pendants_position = loading_map(f"dungeonMap{i}.txt")
+                if dungeon_map_data:
+                    # Encontra o caminho dentro da masmorra até o pingente
+                    test_path_dungeon, test_cost_dungeon = a_star_search(link_position_dungeon, pendants_position, dungeon_map_data, COST_MAP)
+                    if test_path_dungeon:
+                        # Plota o mapa da masmorra com o caminho até o pingente
+                        plot_map(dungeon_map_data, DUNGEON_MAP_SIZE, test_path_dungeon, test_cost_dungeon, total_cost)
+                        # Adiciona o custo de alcançar o pingente ao custo total
+                        total_cost += test_cost_dungeon.get(pendants_position)
+                    else:
+                        print(f"Não foi possível encontrar um caminho para o pingente na masmorra {i}.")
+                        break
+                else:
+                    print(f"Não foi possível carregar o arquivo dungeonMap{i}.txt.")
+                    break
+            else:
+                print("Jornada abortada.")
+                break
+        
+        # Atualiza a posição do Link para a masmorra atual para a próxima etapa da jornada
+        link_position = dungeon 
 
     print(f"Caminho encontrado! Custo total: {total_cost}")
     return
