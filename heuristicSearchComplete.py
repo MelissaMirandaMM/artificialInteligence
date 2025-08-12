@@ -26,6 +26,7 @@ DANGEON = 7
 PENDANT = 8
 LINK = 9
 LOSTWOOD = 11
+SWORD = 12
 
 # Custo de movimento para cada terreno
 COST_MAP = {
@@ -42,6 +43,7 @@ COST_MAP = {
     PENDANT: 0,
     LINK: 0,
     LOSTWOOD: 0
+    
 }
 
 # Funcao heuristica (distância de Manhattan)
