@@ -54,13 +54,16 @@ def a_star_search(
     start: Position,
     goal: Position,
     terrain_map: TerrainMap,
-    cost_map: Dict[int, int]
+    cost_map: Dict[int, int],
+    dungeon: bool = False  
 ) -> Tuple[Path, dict[Position, int]]:
     
     # Função para obter custo de movimento
     def get_move_cost(pos: Position) -> int:
+        if dungeon:  # Se estiver em uma masmorra
+            return 10  # Custo fixo em masmorras
         terrain_type = terrain_map[pos[0]][pos[1]]
-        return cost_map.get(terrain_type, float('inf'))  # Retorna infinito para terrenos inválidos
+        return cost_map.get(terrain_type, float('inf'))
     
     frontier = []
     heapq.heappush(frontier, (0, start))
@@ -129,6 +132,7 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
     rows, cols = map_size
     grid = np.zeros((rows, cols, 3))
 
+    # Preenche o grid com as cores dos terrenos
     for r in range(rows):
         for c in range(cols):
             terrain_type = map_data[r][c]
@@ -156,7 +160,7 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
     ax.grid(which='major', color='black', linestyle='-', linewidth=1)
     # ----------------------------------------
     # --------------- Custo ------------------
-    curent_cost_text = ax.text(-0.015, 0.98, 'Custo: 0', ha='right', va='top', color='white', fontsize=16, weight='bold', 
+    current_cost_text = ax.text(-0.015, 0.98, 'Custo: 0', ha='right', va='top', color='white', fontsize=16, weight='bold', 
         bbox=dict(facecolor='black', alpha=0.7, edgecolor='none'),
         transform=ax.transAxes)
     total_cost_text = ax.text(-0.015, 0.94, 'Custo: 0', ha='right', va='top', color='white', fontsize=16, weight='bold', 
@@ -164,31 +168,43 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
         transform=ax.transAxes)
     # ----------------------------------------
 
-    plt.draw()
+    #plt.draw()
     # plt.waitforbuttonpress() 
+    # Mostra o mapa inicial
+    im = ax.imshow(grid)
+    fig.canvas.draw_idle()
+    plt.pause(0.5)
 
     if path:
-        grid[path[0]] = [1, 1, 1]
-        for r, c in path: # Move o link
-
-            curent_cost_text.set_text(f'Custo do caminho: {cost.get((r, c))}')
-            total_cost_text.set_text(f'Custo total: {total_cost + cost.get((r, c))}')
-
+        # Mostra o caminho sendo percorrido
+        for i, (r, c) in enumerate(path):
             current_grid = np.copy(grid)
+            
+            # Atualiza a posição atual do Link
             current_grid[r, c] = color_map.get(LINK)
-
+            
+            # Desenha o caminho percorrido até agora
+            for (pr, pc) in path[:i]:
+                current_grid[pr, pc] = color_map.get(LINK)
+            
+            # Atualiza os custos
+            current_cost = cost.get((r, c), 0)
+            current_cost_text.set_text(f'Custo Atual: {current_cost}')
+            total_cost_text.set_text(f'Custo Total: {total_cost + current_cost}')
+            
+            # Atualiza a visualização
             im.set_data(current_grid)
             fig.canvas.draw_idle()
-            # plt.pause(0.5)
+            plt.pause(0.1)  # Controla a velocidade da animação
 
-        for r, c in path: # Pinta o caminho percorrido
+        # Mostra o caminho completo no final
+        for r, c in path:
             grid[r, c] = color_map.get(LINK)
-
+        
         im.set_data(grid)
         fig.canvas.draw_idle()
         plt.pause(2)
-        # plt.waitforbuttonpress()
-        
+    
     plt.ioff()
     plt.close(fig)
 
@@ -236,49 +252,79 @@ def loading_map(filename):
 def main():
     total_cost = 0
     main_map_data, link_position, dungeons_position, _ = loading_map("mainMap.txt")
+    
+    # Encontra a posição da Master Sword (Lost Woods)
+    sword_position = None
+    for i in range(len(main_map_data)):
+        for j in range(len(main_map_data[0])):
+            if main_map_data[i][j] == LOSTWOOD:  # 11 representa Lost Woods
+                sword_position = (i, j)
+                break
+        if sword_position:
+            break
+    
+    if not sword_position:
+        print("Posição da Master Sword não encontrada no mapa!")
+        return
 
-    for i, dungeon in enumerate(dungeons_position, start=1):
-        # Encontra o caminho do Link até a masmorra atual no mapa principal usando A*
+    # Coletar pingentes nas 3 masmorras (excluindo Lost Woods da lista)
+    for i, dungeon in enumerate(dungeons_position[:3], start=1):  # Pega apenas as 3 primeiras posições
+        # Encontra caminho até a masmorra
         test_path, test_cost = a_star_search(link_position, dungeon, main_map_data, COST_MAP)
         
         if test_path:
-            # Plota o mapa principal com o caminho encontrado até a masmorra
             plot_map(main_map_data, MAIN_MAP_SIZE, test_path, test_cost, total_cost)
-            # Adiciona o custo de alcançar a masmorra ao custo total
-            total_cost += test_cost.get(dungeon)
+            total_cost += test_cost.get(dungeon, 0)
         else:
-            print(f"Não foi possível encontrar um caminho para a masmorra {i}.")
-            break
+            print(f"Não foi possível encontrar caminho para a Masmorra {i}.")
+            return
 
-        if i < 4:
-            # Pergunta ao usuário se deseja prosseguir para dentro da masmorra (S/N)
-            proceed = input(f"Caminho para a Masmorra {i} encontrado. Deseja prosseguir para a masmorra? (S/N): ").strip().upper()
-            if proceed == 'S': # Altera a condição para 'S'
-                # Se o usuário confirmar, carrega os dados do mapa da masmorra correspondente
-                dungeon_map_data, link_position_dungeon, _, pendants_position = loading_map(f"dungeonMap{i}.txt")
-                if dungeon_map_data:
-                    # Encontra o caminho dentro da masmorra até o pingente
-                    test_path_dungeon, test_cost_dungeon = a_star_search(link_position_dungeon, pendants_position, dungeon_map_data, COST_MAP)
-                    if test_path_dungeon:
-                        # Plota o mapa da masmorra com o caminho até o pingente
-                        plot_map(dungeon_map_data, DUNGEON_MAP_SIZE, test_path_dungeon, test_cost_dungeon, total_cost)
-                        # Adiciona o custo de alcançar o pingente ao custo total
-                        total_cost += test_cost_dungeon.get(pendants_position)
-                    else:
-                        print(f"Não foi possível encontrar um caminho para o pingente na masmorra {i}.")
-                        break
-                else:
-                    print(f"Não foi possível carregar o arquivo dungeonMap{i}.txt.")
-                    break
-            else:
-                print("Jornada abortada.")
-                break
+        # Entrar na masmorra
+        proceed = input(f"Caminho para Masmorra {i} encontrado. Entrar na masmorra? (S/N): ").strip().upper()
+        if proceed != 'S':
+            print("Jornada abortada pelo herói.")
+            return
+
+        dungeon_map_data, link_position_dungeon, _, pendant_pos = loading_map(f"dungeonMap{i}.txt")
+        if not dungeon_map_data:
+            print(f"Erro ao carregar mapa da Masmorra {i}.")
+            return
+
+        # Caminho até o pingente
+        pendant_path, pendant_cost = a_star_search(link_position_dungeon, pendant_pos, dungeon_map_data, COST_MAP, True)
+        if pendant_path:
+            plot_map(dungeon_map_data, DUNGEON_MAP_SIZE, pendant_path, pendant_cost, total_cost)
+            total_cost += pendant_cost.get(pendant_pos, 0)
+        else:
+            print(f"Não foi possível encontrar o pingente na Masmorra {i}.")
+            return
+
+        # Voltar para entrada da masmorra
+        exit_path, exit_cost = a_star_search(pendant_pos, link_position_dungeon, dungeon_map_data, COST_MAP, True)
+        if exit_path:
+            plot_map(dungeon_map_data, DUNGEON_MAP_SIZE, exit_path, exit_cost, total_cost)
+            total_cost += exit_cost.get(link_position_dungeon, 0)
+        else:
+            print(f"Não foi possível sair da Masmorra {i}.")
+            return
+
+        # Atualiza posição do Link para a entrada da masmorra
+        link_position = dungeon
+
+    # Após coletar todos os pingentes, ir para a Master Sword
+    sword_path, sword_cost = a_star_search(link_position, sword_position, main_map_data, COST_MAP)
+    if sword_path:
+        plot_map(main_map_data, MAIN_MAP_SIZE, sword_path, sword_cost, total_cost)
+        total_cost += sword_cost.get(sword_position, 0)
         
-        # Atualiza a posição do Link para a masmorra atual para a próxima etapa da jornada
-        link_position = dungeon 
-
-    print(f"Caminho encontrado! Custo total: {total_cost}")
-    return
+        # Mostrar mensagem final com detalhes
+        print("\n=== MISSÃO CUMPRIDA ===")
+        print(f"Todos os pingentes foram coletados!")
+        print(f"Master Sword obtida em {sword_position}")
+        print(f"Custo total da jornada: {total_cost}")
+        print("Hyrule está salvo!\n")
+    else:
+        print("Não foi possível encontrar caminho para a Master Sword após coletar os pingentes.")
 
 if __name__ == "__main__":
     main()
