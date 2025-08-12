@@ -42,8 +42,8 @@ COST_MAP = {
     DANGEON: 0,
     PENDANT: 0,
     LINK: 0,
-    LOSTWOOD: 0
-    
+    LOSTWOOD: 0,
+    SWORD: 0
 }
 
 # Funcao heuristica (distância de Manhattan)
@@ -122,7 +122,8 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
         WAY: [1.0, 0.9, 0.9],
         WALL: [0.7, 0.7, 0.7],
         PENDANT: [1, 1, 0],
-        LOSTWOOD: [0.8, 0.8, 0]
+        LOSTWOOD: [0.8, 0.8, 0],
+        SWORD: [0.8, 0.2, 0.2]
     }
     
     rows, cols = map_size
