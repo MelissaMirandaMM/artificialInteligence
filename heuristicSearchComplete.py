@@ -133,14 +133,25 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
     grid = np.zeros((rows, cols, 3))
 
     # Preenche o grid com as cores dos terrenos
+    
+    #for r in range(rows):
+    #    for c in range(cols):
+    #        terrain_type = map_data[r][c]
+    #       grid[r, c] = color_map.get(terrain_type, [0.5, 0.5, 0.5])
+
+    #        if(terrain_type == 9):
+    #            grid[r, c] = [0.5, 0.5, 0.8]
+    
     for r in range(rows):
         for c in range(cols):
             terrain_type = map_data[r][c]
-            grid[r, c] = color_map.get(terrain_type, [0.5, 0.5, 0.5])
-
-            if(terrain_type == 9):
-                grid[r, c] = [0.5, 0.5, 0.8]
-            
+            if terrain_type == SWORD:  # Garante que a espada seja plotada
+                grid[r, c] = color_map[SWORD]
+            elif terrain_type == LINK:  # Link tem prioridade menor que a espada
+                grid[r, c] = color_map[LINK]
+            else:
+                grid[r, c] = color_map.get(terrain_type, [0.5, 0.5, 0.5])
+    
     plt.ion()
 
     # --------- CONFIGURACOES DO PLOT --------
@@ -253,16 +264,16 @@ def main():
     total_cost = 0
     main_map_data, link_position, dungeons_position, _ = loading_map("mainMap.txt")
     
-    # Encontra a posição da Master Sword (Lost Woods)
+    # Encontra a posição da Master Sword (12)
     sword_position = None
     for i in range(len(main_map_data)):
         for j in range(len(main_map_data[0])):
-            if main_map_data[i][j] == LOSTWOOD:  # 11 representa Lost Woods
+            if main_map_data[i][j] == SWORD:  # 12 representa a Master Sword
                 sword_position = (i, j)
                 break
         if sword_position:
             break
-    
+
     if not sword_position:
         print("Posição da Master Sword não encontrada no mapa!")
         return
@@ -311,20 +322,43 @@ def main():
         # Atualiza posição do Link para a entrada da masmorra
         link_position = dungeon
 
-    # Após coletar todos os pingentes, ir para a Master Sword
-    sword_path, sword_cost = a_star_search(link_position, sword_position, main_map_data, COST_MAP)
+    # 1. Primeiro ir para Lost Woods (11)
+    lost_woods_pos = None
+    for i in range(len(main_map_data)):
+        for j in range(len(main_map_data[0])):
+            if main_map_data[i][j] == LOSTWOOD:
+                lost_woods_pos = (i, j)
+                break
+        if lost_woods_pos:
+            break
+
+    if not lost_woods_pos:
+        print("Posição de Lost Woods não encontrada no mapa!")
+        return
+
+    # Caminho até Lost Woods
+    lw_path, lw_cost = a_star_search(link_position, lost_woods_pos, main_map_data, COST_MAP)
+    if lw_path:
+        plot_map(main_map_data, MAIN_MAP_SIZE, lw_path, lw_cost, total_cost)
+        total_cost += lw_cost.get(lost_woods_pos, 0)
+    else:
+        print("Não foi possível encontrar caminho para Lost Woods.")
+        return
+
+    # 2. Depois ir da Lost Woods até a Master Sword (12)
+    sword_path, sword_cost = a_star_search(lost_woods_pos, sword_position, main_map_data, COST_MAP)
     if sword_path:
         plot_map(main_map_data, MAIN_MAP_SIZE, sword_path, sword_cost, total_cost)
         total_cost += sword_cost.get(sword_position, 0)
         
-        # Mostrar mensagem final com detalhes
+        # Saída final
         print("\n=== MISSÃO CUMPRIDA ===")
         print(f"Todos os pingentes foram coletados!")
         print(f"Master Sword obtida em {sword_position}")
         print(f"Custo total da jornada: {total_cost}")
-        print("Hyrule está salvo!\n")
+        print("O Reino de Hyrule está salvo!\n")
     else:
-        print("Não foi possível encontrar caminho para a Master Sword após coletar os pingentes.")
-
+        print("Não foi possível encontrar caminho da Lost Woods para a Master Sword.")
+        
 if __name__ == "__main__":
     main()
