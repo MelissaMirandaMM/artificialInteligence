@@ -60,8 +60,6 @@ def a_star_search(
     
     # Função para obter custo de movimento
     def get_move_cost(pos: Position) -> int:
-        if dungeon:  # Se estiver em uma masmorra
-            return 10  # Custo fixo em masmorras
         terrain_type = terrain_map[pos[0]][pos[1]]
         return cost_map.get(terrain_type, float('inf'))
     
@@ -179,7 +177,7 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
         transform=ax.transAxes)
     # ----------------------------------------
 
-    #plt.draw()
+    # plt.draw()
     # plt.waitforbuttonpress() 
     # Mostra o mapa inicial
     im = ax.imshow(grid)
@@ -302,7 +300,7 @@ def main():
             return
 
         # Caminho até o pingente
-        pendant_path, pendant_cost = a_star_search(link_position_dungeon, pendant_pos, dungeon_map_data, COST_MAP, True)
+        pendant_path, pendant_cost = a_star_search(link_position_dungeon, pendant_pos, dungeon_map_data, COST_MAP)
         if pendant_path:
             plot_map(dungeon_map_data, DUNGEON_MAP_SIZE, pendant_path, pendant_cost, total_cost)
             total_cost += pendant_cost.get(pendant_pos, 0)
@@ -311,7 +309,7 @@ def main():
             return
 
         # Voltar para entrada da masmorra
-        exit_path, exit_cost = a_star_search(pendant_pos, link_position_dungeon, dungeon_map_data, COST_MAP, True)
+        exit_path, exit_cost = a_star_search(pendant_pos, link_position_dungeon, dungeon_map_data, COST_MAP)
         if exit_path:
             plot_map(dungeon_map_data, DUNGEON_MAP_SIZE, exit_path, exit_cost, total_cost)
             total_cost += exit_cost.get(link_position_dungeon, 0)
