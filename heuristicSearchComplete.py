@@ -109,8 +109,9 @@ def a_star_search(
 
     return path, cost_so_far
 
-def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None, cost: dict[Position, int] = {}, total_cost: int = 0):
-
+def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None, 
+             cost: dict[Position, int] = {}, total_cost: int = 0):
+    
     color_map = {
         GRASS: [0.55, 0.8, 0.3],
         SAND: [0.77, 0.75, 0.6],
@@ -119,7 +120,6 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
         WATER: [0.33, 0.55, 0.83],
         DANGEON: [0.12, 0.12, 0.12], 
         LINK: [0.85, 0.5, 0.3],
-
         WAY: [1.0, 0.9, 0.9],
         WALL: [0.7, 0.7, 0.7],
         PENDANT: [1, 1, 0],
@@ -130,74 +130,114 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
     rows, cols = map_size
     grid = np.zeros((rows, cols, 3))
 
-    # Preenche o grid com as cores dos terrenos
-    
     for r in range(rows):
         for c in range(cols):
             terrain_type = map_data[r][c]
-            if terrain_type == SWORD:  # Garante que a espada seja plotada
+            if terrain_type == SWORD:
                 grid[r, c] = color_map[SWORD]
-            elif terrain_type == LINK:  # Link tem prioridade menor que a espada
+            elif terrain_type == LINK:
                 grid[r, c] = color_map[LINK]
             else:
                 grid[r, c] = color_map.get(terrain_type, [0.5, 0.5, 0.5])
     
     plt.ion()
-
-    # --------- CONFIGURACOES DO PLOT --------
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(12, 12))
     mng = plt.get_current_fig_manager()
     if mng is not None:
         mng.full_screen_toggle() 
-    fig.subplots_adjust(top=1, bottom=0, left=0, right=1, wspace=0, hspace=0)
-    im = ax.imshow(grid)
-    # ----------------------------------------
-    # --------- LINHAS PARA AS BORDAS --------
+    
+    # Configurações do plot
+    plt.title('Jornada de Link', pad=20, fontsize=16, weight='bold')
+    fig.subplots_adjust(top=0.9, bottom=0.15, left=0.1, right=0.75)
+    
+    # Adicionar legenda
+    legend_elements = [
+        plt.Line2D([0], [0], marker='o', color='w', label='Link (Início)', 
+                  markerfacecolor=color_map[LINK], markersize=10),
+        plt.Line2D([0], [0], marker='o', color='w', label='Master Sword (Objetivo)', 
+                  markerfacecolor=color_map[SWORD], markersize=10),
+        plt.Line2D([0], [0], marker='o', color='w', label='Pingente da Virtude', 
+                  markerfacecolor=color_map[PENDANT], markersize=10),
+        plt.Line2D([0], [0], marker='o', color='w', label='Lost Woods', 
+                  markerfacecolor=color_map[LOSTWOOD], markersize=10),
+        plt.Line2D([0], [0], marker='s', color='w', label='Grama (Custo: 10)', 
+                  markerfacecolor=color_map[GRASS], markersize=10),
+        plt.Line2D([0], [0], marker='s', color='w', label='Areia (Custo: 20)', 
+                  markerfacecolor=color_map[SAND], markersize=10),
+        plt.Line2D([0], [0], marker='s', color='w', label='Floresta (Custo: 100)', 
+                  markerfacecolor=color_map[FOREST], markersize=10),
+        plt.Line2D([0], [0], marker='s', color='w', label='Montanha (Custo: 150)', 
+                  markerfacecolor=color_map[MOUNTAIN], markersize=10),
+        plt.Line2D([0], [0], marker='s', color='w', label='Água (Custo: 180)', 
+                  markerfacecolor=color_map[WATER], markersize=10),
+        plt.Line2D([0], [0], marker='s', color='w', label='Masmorra', 
+                  markerfacecolor=color_map[DANGEON], markersize=10),
+        plt.Line2D([0], [0], marker='s', color='w', label='Caminho (Masmorra)', 
+                  markerfacecolor=color_map[WAY], markersize=10),
+        plt.Line2D([0], [0], marker='s', color='w', label='Parede (Intransponível)', 
+                  markerfacecolor=color_map[WALL], markersize=10)
+    ]
+    
+    ax.legend(handles=legend_elements, bbox_to_anchor=(1.05, 1), 
+              loc='upper left', borderaxespad=0., title="Legenda:")
+    
+    # Linhas para as bordas
     ax.set_xticks(np.arange(-.5, cols, 1))
     ax.set_yticks(np.arange(-.5, rows, 1))
     ax.set_xticklabels([])
     ax.set_yticklabels([])
     ax.tick_params(axis='both', which='both', length=0)
     ax.grid(which='major', color='black', linestyle='-', linewidth=1)
-    # ----------------------------------------
-    # --------------- Custo ------------------
-    current_cost_text = ax.text(-0.015, 0.98, 'Custo: 0', ha='right', va='top', color='white', fontsize=16, weight='bold', 
-        bbox=dict(facecolor='black', alpha=0.7, edgecolor='none'),
-        transform=ax.transAxes)
-    total_cost_text = ax.text(-0.015, 0.94, 'Custo: 0', ha='right', va='top', color='white', fontsize=16, weight='bold', 
-        bbox=dict(facecolor='black', alpha=0.7, edgecolor='none'),
-        transform=ax.transAxes)
-    # ----------------------------------------
-    # Mostra o mapa inicial
+    
+    # Textos de custo
+    current_cost_text = ax.text(-0.015, 0.98, 'Custo Atual: 0', ha='right', va='top', 
+                               color='white', fontsize=14, weight='bold', 
+                               bbox=dict(facecolor='black', alpha=0.8, edgecolor='white', boxstyle='round,pad=0.5'))
+    
+    total_cost_text = ax.text(-0.015, 0.94, 'Custo Total: 0', ha='right', va='top', 
+                             color='white', fontsize=14, weight='bold', 
+                             bbox=dict(facecolor='black', alpha=0.8, edgecolor='white', boxstyle='round,pad=0.5'))
+    
+    # Barra de progresso
+    progress_text = ax.text(0.5, -0.05, 'Preparando jornada...', ha='center', va='top', 
+                           color='black', fontsize=12, weight='bold',
+                           transform=ax.transAxes)
+    
+    # Mostrar mapa inicial
     im = ax.imshow(grid)
     fig.canvas.draw_idle()
     plt.pause(0.5)
 
     if path:
-        # Mostra o caminho sendo percorrido
+        # Mostrar caminho sendo percorrido
         for i, (r, c) in enumerate(path):
             current_grid = np.copy(grid)
             
-            # Atualiza a posição atual do Link
-            current_grid[r, c] = color_map.get(LINK)
+            # Atualizar posição do Link
+            current_grid[r, c] = color_map[LINK]
             
-            # Desenha o caminho percorrido até agora
-            for (pr, pc) in path[:i]:
-                current_grid[pr, pc] = color_map.get(LINK)
+            # Desenhar caminho com gradiente
+            for step, (pr, pc) in enumerate(path[:i]):
+                intensity = 0.5 + 0.5*(step/i) if i > 0 else 1
+                current_grid[pr, pc] = np.clip(np.array(color_map[LINK]) * intensity, 0, 1)
             
-            # Atualiza os custos
+            # Atualizar custos
             current_cost = cost.get((r, c), 0)
             current_cost_text.set_text(f'Custo Atual: {current_cost}')
             total_cost_text.set_text(f'Custo Total: {total_cost + current_cost}')
             
-            # Atualiza a visualização
+            # Atualizar progresso
+            progress = (i+1)/len(path)*100
+            progress_text.set_text(f'Progresso: {progress:.1f}% - Etapa {i+1}/{len(path)}')
+            
+            # Atualizar visualização
             im.set_data(current_grid)
             fig.canvas.draw_idle()
-            plt.pause(0.1)  # Controla a velocidade da animação
-
-        # Mostra o caminho completo no final
+            plt.pause(0.1)
+        
+        # Mostrar caminho completo no final
         for r, c in path:
-            grid[r, c] = color_map.get(LINK)
+            grid[r, c] = color_map[LINK]
         
         im.set_data(grid)
         fig.canvas.draw_idle()
