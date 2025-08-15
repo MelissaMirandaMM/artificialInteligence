@@ -132,14 +132,6 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
 
     # Preenche o grid com as cores dos terrenos
     
-    #for r in range(rows):
-    #    for c in range(cols):
-    #        terrain_type = map_data[r][c]
-    #       grid[r, c] = color_map.get(terrain_type, [0.5, 0.5, 0.5])
-
-    #        if(terrain_type == 9):
-    #            grid[r, c] = [0.5, 0.5, 0.8]
-    
     for r in range(rows):
         for c in range(cols):
             terrain_type = map_data[r][c]
@@ -176,9 +168,6 @@ def plot_map(map_data: TerrainMap, map_size: Tuple[int, int], path: Path = None,
         bbox=dict(facecolor='black', alpha=0.7, edgecolor='none'),
         transform=ax.transAxes)
     # ----------------------------------------
-
-    # plt.draw()
-    # plt.waitforbuttonpress() 
     # Mostra o mapa inicial
     im = ax.imshow(grid)
     fig.canvas.draw_idle()
